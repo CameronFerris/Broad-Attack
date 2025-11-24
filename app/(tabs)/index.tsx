@@ -1921,6 +1921,7 @@ export default function MapScreen() {
 
       {!isTimerActive && selectedRouteId && !isRouteConfirmed && (
         <Pressable 
+          testID="confirm-route-start-button"
           style={styles.startRunButton}
           onPress={handleStartRun}
         >
@@ -1942,6 +1943,7 @@ export default function MapScreen() {
 
       <View style={styles.buttonContainer}>
         <Pressable
+          testID="toggle-start-checkpoint"
           style={[
             styles.addButton,
             isAddingCheckpoint === 'start' && styles.addButtonActive,
@@ -1956,6 +1958,7 @@ export default function MapScreen() {
         </Pressable>
 
         <Pressable
+          testID="toggle-finish-checkpoint"
           style={[
             styles.addButton,
             isAddingCheckpoint === 'finish' && styles.addButtonActive,
@@ -1970,6 +1973,7 @@ export default function MapScreen() {
         </Pressable>
 
         <Pressable
+          testID="toggle-speed-camera"
           style={[
             styles.addButton,
             isAddingSpeedCamera && styles.addButtonActive,
@@ -1984,6 +1988,7 @@ export default function MapScreen() {
         </Pressable>
 
         <Pressable
+          testID="clear-checkpoints-button"
           style={[styles.addButton, styles.clearButton]}
           onPress={handleClearCheckpoints}
         >
@@ -1992,18 +1997,20 @@ export default function MapScreen() {
       </View>
 
       <Pressable 
+        testID="voice-mode-button"
         style={[styles.voiceButton, { backgroundColor: getVoiceModeColor() }]}
         onPress={() => setIsVoiceModalVisible(true)}
       >
         {getVoiceModeIcon()}
       </Pressable>
 
-      <Pressable style={styles.centerButton} onPress={centerOnUser}>
+      <Pressable testID="recenter-map-button" style={styles.centerButton} onPress={centerOnUser}>
         <MapPin size={24} color="#007AFF" />
       </Pressable>
 
       {isTimerActive && (
         <Pressable 
+          testID="end-run-button"
           style={styles.endRunButton}
           onPress={() => {
             Alert.alert(
@@ -2065,6 +2072,7 @@ export default function MapScreen() {
       )}
 
       <Pressable 
+        testID="toggle-ghost-button"
         style={[
           styles.ghostButton,
           { backgroundColor: ghostEnabled ? 'rgba(147, 51, 234, 0.95)' : 'rgba(142, 142, 147, 0.95)' }
@@ -2075,6 +2083,7 @@ export default function MapScreen() {
       </Pressable>
 
       <Pressable 
+        testID="open-history-button"
         style={styles.historyButton} 
         onPress={() => router.push('/(tabs)/history')}
       >
@@ -2243,6 +2252,7 @@ export default function MapScreen() {
                   setIsRouteConfirmed(true);
                   centerOnUser();
                 }}
+                testID="finish-modal-retry-button"
               >
                 <Play size={20} color="#fff" fill="#fff" />
                 <Text style={styles.finishModalRetryText}>Retry</Text>
@@ -2260,6 +2270,7 @@ export default function MapScreen() {
                   setIsRouteConfirmed(false);
                   centerOnUser();
                 }}
+                testID="finish-modal-exit-button"
               >
                 <X size={20} color="#fff" />
                 <Text style={styles.finishModalExitText}>Exit</Text>
