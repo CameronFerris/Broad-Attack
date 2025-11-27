@@ -718,6 +718,8 @@ export default function MapScreen() {
           speedUnit,
         });
       }
+
+      await getRoadName(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.error('Error detecting user location:', error);
     }
@@ -1833,8 +1835,8 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {showSpeed && (
-      <View style={styles.topInfoContainer}>
+      <View style={[styles.topInfoContainer, !showSpeed && styles.roadOnlyContainer]}>
+        {showSpeed && (
         <View style={styles.infoCard}>
           <Text style={styles.speedLabel}>SPEED</Text>
           <Text style={styles.speedValue}>
@@ -1848,15 +1850,15 @@ export default function MapScreen() {
             {locationInfo.speedUnit === 'mph' ? 'mph' : 'km/h'}
           </Text>
         </View>
+        )}
         
-        <View style={styles.roadCard}>
+        <View style={styles.roadCard} testID="current-road-chip">
           <Text style={styles.roadLabel}>ROAD</Text>
           <Text style={styles.roadText} numberOfLines={1}>
             {currentRoad}
           </Text>
         </View>
       </View>
-      )}
 
       {nearbySpeedCamera && (
         <View style={styles.speedCameraWarning}>
@@ -2318,6 +2320,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  roadOnlyContainer: {
+    justifyContent: 'flex-end',
   },
   infoCard: {
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
