@@ -56,7 +56,41 @@ const TURN_DETECTION_THRESHOLD = 12;
 const RALLY_TURN_DETECTION_THRESHOLD = 10;
 const GHOST_INTERPOLATION_SMOOTHING = 5;
 
-const MPH_COUNTRIES = ['US', 'GB', 'LR', 'MM'];
+const MPH_COUNTRIES = [
+  'US',
+  'UM', // U.S. Minor Outlying Islands
+  'PR', // Puerto Rico
+  'VI', // U.S. Virgin Islands
+  'GU', // Guam
+  'AS', // American Samoa
+  'MP', // Northern Mariana Islands
+  'GB',
+  'UK',
+  'GG', // Guernsey
+  'JE', // Jersey
+  'IM', // Isle of Man
+  'GI', // Gibraltar
+  'LR',
+  'MM',
+  'BS', // Bahamas
+  'BZ', // Belize
+  'KY', // Cayman Islands
+  'VG', // British Virgin Islands
+  'BM', // Bermuda
+  'AI', // Anguilla
+  'AG', // Antigua and Barbuda
+  'DM', // Dominica
+  'GD', // Grenada
+  'MS', // Montserrat
+  'KN', // Saint Kitts and Nevis
+  'LC', // Saint Lucia
+  'VC', // Saint Vincent and the Grenadines
+  'TT', // Trinidad and Tobago
+  'TC', // Turks and Caicos Islands
+  'PW', // Palau
+  'FM', // Micronesia
+  'MH', // Marshall Islands
+];
 
 const USER_ID_KEY = '@timeattack_user_id';
 const USER_NAME_KEY = '@timeattack_user_name';
@@ -703,7 +737,8 @@ export default function MapScreen() {
       
       if (results.length > 0) {
         const result = results[0];
-        const countryCode = result.isoCountryCode || null;
+        const rawCountryCode = result.isoCountryCode || null;
+        const countryCode = rawCountryCode ? rawCountryCode.toUpperCase() : null;
         const country = result.country || null;
         
         const speedUnit: SpeedUnit = countryCode && MPH_COUNTRIES.includes(countryCode)
