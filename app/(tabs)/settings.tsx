@@ -477,6 +477,12 @@ export default function SettingsScreen() {
             value={saveHistory}
             onValueChange={setSaveHistory}
           />
+          <Text style={styles.privacyText}>
+            We only collect GPS, speed, and heading data to power navigation,
+            safety alerts, and leaderboards. Example: your precise location is
+            used to display the live road name on the map and, with explicit
+            tracking consent, to create ghost laps for your party.
+          </Text>
         </View>
       </View>
 
@@ -556,6 +562,13 @@ const getStyles = (isDark: boolean) => StyleSheet.create({
     shadowOpacity: isDark ? 0.3 : 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  privacyText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: isDark ? '#8E8E93' : '#4A4A4A',
+    marginTop: 16,
+    lineHeight: 20,
   },
   cardSubtitle: {
     fontSize: 14,

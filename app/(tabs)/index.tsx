@@ -1612,7 +1612,17 @@ export default function MapScreen() {
         <MapPin size={48} color="#FF3B30" />
         <Text style={styles.permissionText}>Location permission required</Text>
         <Text style={styles.permissionSubtext}>
-          Please enable location access to use this app
+          Precise GPS, heading, and speed data let us draw your current road,
+          warn about upcoming hazards, and calculate lap timing.
+        </Text>
+        <Text style={styles.permissionSubtext}>
+          Example: we collect your live latitude/longitude to show the road name in
+          the top right corner and, if you opt into tracking consent, to share a
+          ghost replay with your party leaderboard.
+        </Text>
+        <Text style={styles.permissionSubtext}>
+          Enable location and App Tracking Transparency in system settings to
+          continue.
         </Text>
       </View>
     );

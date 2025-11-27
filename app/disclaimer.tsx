@@ -85,6 +85,26 @@ export default function DisclaimerScreen() {
           </Text>
 
           <Text style={styles.sectionTitle}>
+            How we use protected data
+          </Text>
+
+          <Text style={styles.bodyText}>
+            We collect precise location, speed, heading, and device identifiers
+            to power live navigation, speed monitoring, ghost laps, and party
+            leaderboards. This data may be stored locally on your device and,
+            with your App Tracking Transparency consent, securely uploaded so you
+            can compare laps with friends. Example: we capture your latitude,
+            longitude, and current road name to render the road label in the top
+            right corner and to replay your ghost car for future sessions.
+          </Text>
+
+          <Text style={styles.bodyText}>
+            We never sell personal information. Data is only used to deliver the
+            in-app driving experience, surface safety alerts, and share results
+            with parties you explicitly join.
+          </Text>
+
+          <Text style={styles.sectionTitle}>
             By tapping &quot;I Agree,&quot; you confirm that:
           </Text>
 
