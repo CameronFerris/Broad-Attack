@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Checkpoint, RunRecord, UserLocationInfo, VoiceMode, SpeedCamera, GhostPoint, ActiveRunPath } from '@/types/map';
 import { submitRaceResult, uploadGhostRace } from '@/lib/database-service';
 import { DEFAULT_PARTY_ID } from '@/constants/appLink';
+import { useTrackingPermission } from '@/contexts/TrackingPermissionContext';
 
 const CHECKPOINTS_KEY = '@drivetrack_checkpoints';
 const RUNS_KEY = '@drivetrack_runs';
@@ -12,6 +13,7 @@ const USER_ID_KEY = '@timeattack_user_id';
 const CURRENT_PARTY_KEY = '@drivetrack_party_id';
 
 export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
+  const { hasConsent: hasTrackingConsent } = useTrackingPermission();
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
@@ -223,43 +225,51 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
     });
     
     // Upload ghost race
-    try {
-      const userId = await AsyncStorage.getItem(USER_ID_KEY);
-      if (userId) {
-        await uploadGhostRace({
-          userId,
-          courseId,
-          duration,
-          ghostPath: currentGhostPath,
-          startCheckpoint,
-          finishCheckpoint,
-          averageSpeed,
-          maxSpeed: maxSpeedInRun,
-        });
-        console.log('Uploaded ghost race to database');
+    if (hasTrackingConsent) {
+      try {
+        const userId = await AsyncStorage.getItem(USER_ID_KEY);
+        if (userId) {
+          await uploadGhostRace({
+            userId,
+            courseId,
+            duration,
+            ghostPath: currentGhostPath,
+            startCheckpoint,
+            finishCheckpoint,
+            averageSpeed,
+            maxSpeed: maxSpeedInRun,
+          });
+          console.log('Uploaded ghost race to database');
+        }
+      } catch (error) {
+        console.error('Error uploading ghost race:', error);
       }
-    } catch (error) {
-      console.error('Error uploading ghost race:', error);
+    } else {
+      console.warn('Tracking consent not granted. Skipping ghost race upload.');
     }
 
     // Submit to party if in one
     if (currentPartyId) {
-      try {
-        const userId = await AsyncStorage.getItem(USER_ID_KEY);
-        if (userId) {
-          await submitRaceResult({
-            partyId: currentPartyId,
-            userId,
-            courseId,
-            duration,
-            averageSpeed,
-            maxSpeed: maxSpeedInRun,
-            ghostPath: currentGhostPath,
-          });
-          console.log('Submitted race result to party:', currentPartyId);
+      if (!hasTrackingConsent) {
+        console.warn('Tracking consent not granted. Skipping party submission.');
+      } else {
+        try {
+          const userId = await AsyncStorage.getItem(USER_ID_KEY);
+          if (userId) {
+            await submitRaceResult({
+              partyId: currentPartyId,
+              userId,
+              courseId,
+              duration,
+              averageSpeed,
+              maxSpeed: maxSpeedInRun,
+              ghostPath: currentGhostPath,
+            });
+            console.log('Submitted race result to party:', currentPartyId);
+          }
+        } catch (error) {
+          console.error('Error submitting race result:', error);
         }
-      } catch (error) {
-        console.error('Error submitting race result:', error);
       }
     }
     
@@ -269,7 +279,7 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
     setMaxSpeedInRun(0);
     setCurrentGhostPath([]);
     setActiveRunPath(null);
-  }, [startTime, currentRunSpeeds, maxSpeedInRun, currentGhostPath, currentPartyId]);
+  }, [startTime, currentRunSpeeds, maxSpeedInRun, currentGhostPath, currentPartyId, hasTrackingConsent]);
 
   const recordSpeed = useCallback((speed: number) => {
     if (isTimerActive) {

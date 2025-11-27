@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { DriveTrackProvider } from "@/contexts/DriveTrackContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { TrackingPermissionProvider } from "@/contexts/TrackingPermissionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, View } from "react-native";
 
@@ -99,13 +100,15 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <DriveTrackProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <RootLayoutNav />
-          </GestureHandlerRootView>
-        </DriveTrackProvider>
-      </SettingsProvider>
+      <TrackingPermissionProvider>
+        <SettingsProvider>
+          <DriveTrackProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <RootLayoutNav />
+            </GestureHandlerRootView>
+          </DriveTrackProvider>
+        </SettingsProvider>
+      </TrackingPermissionProvider>
     </QueryClientProvider>
   );
 }

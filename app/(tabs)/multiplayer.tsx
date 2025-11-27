@@ -1,4 +1,5 @@
 import { useDriveTrack } from '@/contexts/DriveTrackContext';
+import { useTrackingPermission } from '@/contexts/TrackingPermissionContext';
 import { 
   createParty, 
   joinPartyByCode, 
@@ -12,7 +13,7 @@ import {
   type DbRaceResult,
 } from '@/lib/database-service';
 import { Users, Plus, UserPlus, Trophy, Share2, X } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Alert,
   FlatList,
@@ -42,13 +43,58 @@ export default function MultiplayerScreen() {
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
   const [invitationCode, setInvitationCode] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const {
+    hasConsent: hasTrackingConsent,
+    isReady: isTrackingReady,
+    requestPermission: requestTrackingPermission,
+  } = useTrackingPermission();
+
+  const ensureTrackingConsent = useCallback(async () => {
+    if (hasTrackingConsent) {
+      return true;
+    }
+
+    if (Platform.OS === 'ios') {
+      const status = await requestTrackingPermission();
+      if (status === 'granted') {
+        return true;
+      }
+    } else if (!isTrackingReady) {
+      return true;
+    }
+
+    Alert.alert(
+      'Tracking Permission Required',
+      'Enable tracking permissions in Settings > Privacy to access multiplayer features.'
+    );
+    return false;
+  }, [hasTrackingConsent, isTrackingReady, requestTrackingPermission]);
+
+  const loadPartyData = useCallback(async () => {
+    if (!currentParty || !hasTrackingConsent) return;
+
+    const members = await getPartyMembers(currentParty.id);
+    setPartyMembers(members);
+
+    const results = await getPartyRaceResults(currentParty.id);
+    setRaceResults(results);
+  }, [currentParty, hasTrackingConsent]);
 
   useEffect(() => {
     loadUserInfo();
   }, []);
 
   useEffect(() => {
-    if (!currentParty) return;
+    if (!hasTrackingConsent) {
+      setCurrentParty(null);
+      setParty(null);
+      setPartyMembers([]);
+      setRaceResults([]);
+    }
+  }, [hasTrackingConsent, setParty]);
+
+  useEffect(() => {
+    if (!currentParty || !hasTrackingConsent) return;
 
     const unsubscribeMembers = subscribeToPartyMembers(currentParty.id, (members) => {
       console.log('Party members updated:', members.length);
@@ -66,7 +112,7 @@ export default function MultiplayerScreen() {
       unsubscribeMembers();
       unsubscribeResults();
     };
-  }, [currentParty?.id]);
+  }, [currentParty, hasTrackingConsent, loadPartyData]);
 
   const loadUserInfo = async () => {
     try {
@@ -91,16 +137,6 @@ export default function MultiplayerScreen() {
     }
   };
 
-  const loadPartyData = async () => {
-    if (!currentParty) return;
-
-    const members = await getPartyMembers(currentParty.id);
-    setPartyMembers(members);
-
-    const results = await getPartyRaceResults(currentParty.id);
-    setRaceResults(results);
-  };
-
   const handleCreateParty = async () => {
     if (!displayName.trim()) {
       Alert.alert('Error', 'Please enter your display name');
@@ -109,6 +145,11 @@ export default function MultiplayerScreen() {
 
     if (!userId) {
       Alert.alert('Error', 'User ID not loaded. Please try again.');
+      return;
+    }
+
+    const consentGranted = await ensureTrackingConsent();
+    if (!consentGranted) {
       return;
     }
 
@@ -160,6 +201,11 @@ export default function MultiplayerScreen() {
 
     if (!userId) {
       Alert.alert('Error', 'User ID not loaded. Please try again.');
+      return;
+    }
+
+    const consentGranted = await ensureTrackingConsent();
+    if (!consentGranted) {
       return;
     }
 
