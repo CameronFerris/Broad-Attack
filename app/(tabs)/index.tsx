@@ -1636,6 +1636,7 @@ export default function MapScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       
       <MapView
+        key={`map-${mapType}-${isDarkMode ? 'dark' : 'light'}`}
         ref={mapRef}
         provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         style={styles.map}
