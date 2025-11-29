@@ -37,7 +37,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE, Polyline } from 'react-native-maps';
+import MapView, { Marker, Circle, PROVIDER_GOOGLE, Polyline, type MapStyleElement } from 'react-native-maps';
 
 const PROXIMITY_THRESHOLD = 5;
 const FINISH_EXIT_THRESHOLD = 50;
@@ -101,6 +101,42 @@ const MEMBER_COLORS = [
   '#FF2D55',
   '#5AC8FA',
   '#FFCC00',
+];
+
+const LIGHT_MAP_STYLE: MapStyleElement[] = [
+  { elementType: 'geometry', stylers: [{ color: '#ebe3cd' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#523735' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f1e6' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#c9b2a6' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#e7e8ea' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#93817c' }] },
+  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#cdeccd' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#447530' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#f8c967' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#e9bc62' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#f2f2f2' }] },
+  { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#d4e4fb' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+];
+
+const DARK_MAP_STYLE: MapStyleElement[] = [
+  { elementType: 'geometry', stylers: [{ color: '#1f1f1f' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8f8f8f' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a1a' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#3f3f3f' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#b0b0b0' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9a76' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#383838' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2f3030' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f1f1f' }] },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#d0d0d0' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2b2b2b' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4e6b84' }] },
 ];
 
 export default function MapScreen() {
@@ -186,7 +222,7 @@ export default function MapScreen() {
     getBestRunForCourse,
   } = useDriveTrack();
 
-  const { showTraffic, mapType, showSpeed, autoZoom, highAccuracyGPS, batterySaver, navigationVolume, mapOrientation } = useSettings();
+  const { showTraffic, mapType, showSpeed, autoZoom, highAccuracyGPS, batterySaver, navigationVolume, mapOrientation, isDarkMode } = useSettings();
   
   const memoizedCheckpoints = useMemo(() => checkpoints, [checkpoints]);
   const [nearbyCameras, setNearbyCameras] = useState<SpeedCamera[]>([]);
@@ -202,6 +238,13 @@ export default function MapScreen() {
     
     return allCameras;
   }, [speedCameras, nearbyCameras]);
+
+  const mapThemeStyle = useMemo<MapStyleElement[]>(() => {
+    if (mapType !== 'standard') {
+      return [];
+    }
+    return isDarkMode ? DARK_MAP_STYLE : LIGHT_MAP_STYLE;
+  }, [isDarkMode, mapType]);
 
   useEffect(() => {
     const init = async () => {
@@ -1604,6 +1647,7 @@ export default function MapScreen() {
         pitchEnabled={false}
         showsTraffic={showTraffic && !isTimerActive}
         mapType={mapType}
+        customMapStyle={mapThemeStyle}
         initialCamera={
           location
             ? {
