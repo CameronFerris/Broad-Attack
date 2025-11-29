@@ -14,6 +14,24 @@ import { AlertTriangle } from "lucide-react-native";
 
 const DISCLAIMER_KEY = "disclaimer_accepted";
 
+const DATA_USAGE_ITEMS = [
+  {
+    title: "Precise location, speed & heading",
+    description: "Needed for lap timing, hazard detection, and rendering live road overlays in your HUD and party map.",
+    example: "We log your latitude, longitude, and speed every 100ms to show the top-right road label and trigger speed camera alerts before you arrive."
+  },
+  {
+    title: "Device & party identifiers",
+    description: "Anonymous identifiers link your ghost laps and leaderboard entries to your profile without storing contact details.",
+    example: "When you upload a ghost replay, we attach a random device token so friends in your party can compare your lap against theirs."
+  },
+  {
+    title: "Push-to-talk audio snippets",
+    description: "Optional microphone access streams short co-driver callouts over party radio, even while the screen is locked.",
+    example: "Holding the radio button records a brief clip that plays for teammates so everyone hears hazard callouts in sync."
+  }
+] as const;
+
 export default function DisclaimerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -104,6 +122,17 @@ export default function DisclaimerScreen() {
             with parties you explicitly join.
           </Text>
 
+          <View style={styles.dataUseList}>
+            {DATA_USAGE_ITEMS.map((item) => (
+              <View key={item.title} style={styles.dataUseCard}>
+                <Text style={styles.dataUseTitle}>{item.title}</Text>
+                <Text style={styles.dataUseDescription}>{item.description}</Text>
+                <Text style={styles.dataUseExampleLabel}>Example</Text>
+                <Text style={styles.dataUseExample}>{item.example}</Text>
+              </View>
+            ))}
+          </View>
+
           <Text style={styles.sectionTitle}>
             By tapping &quot;I Agree,&quot; you confirm that:
           </Text>
@@ -192,6 +221,42 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: "#3A3A3C",
     marginBottom: 16,
+  },
+  dataUseList: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  dataUseCard: {
+    backgroundColor: "#F8F8FA",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(60,60,67,0.12)",
+  },
+  dataUseTitle: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: "#111",
+    marginBottom: 6,
+  },
+  dataUseDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#3A3A3C",
+    marginBottom: 8,
+  },
+  dataUseExampleLabel: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: "#FF3B30",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  dataUseExample: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#1C1C1E",
   },
   sectionTitle: {
     fontSize: 16,
