@@ -1,7 +1,7 @@
 import { useDriveTrack } from '@/contexts/DriveTrackContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { Checkpoint, LocationData, SpeedUnit, NavigationInstruction, RallyPacenote, RallyModifier, RallyCrest, RallyWarning, SpeedCamera, RoadSegment, UpcomingTurn, RouteOption, GhostPoint } from '@/types/map';
-import { calculateRoutes } from '@/lib/route-service';
+import { calculateRoutes, calculateRoutesWithCheckpoints } from '@/lib/route-service';
 import { getDisplayRoadName, sanitizeRoadLabel } from '@/lib/road-name';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -156,7 +156,9 @@ export default function MapScreen() {
   const [currentSpeed, setCurrentSpeed] = useState<number>(0);
   const [currentRoad, setCurrentRoad] = useState<string>('Loading...');
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false);
-  const [isAddingCheckpoint, setIsAddingCheckpoint] = useState<'start' | 'finish' | null>(null);
+  const [isAddingCheckpoint, setIsAddingCheckpoint] = useState<'start' | 'finish' | 'checkpoint' | null>(null);
+  const [passedCheckpoints, setPassedCheckpoints] = useState<Set<string>>(new Set());
+  const [nextTargetCheckpoint, setNextTargetCheckpoint] = useState<Checkpoint | null>(null);
   const [isAddingSpeedCamera, setIsAddingSpeedCamera] = useState<boolean>(false);
   const [nearbySpeedCamera, setNearbySpeedCamera] = useState<{ camera: SpeedCamera; distance: number } | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
@@ -370,15 +372,20 @@ export default function MapScreen() {
     const fetchRoutes = async () => {
       const startCheckpoint = checkpoints.find(c => c.type === 'start');
       const finishCheckpoint = checkpoints.find(c => c.type === 'finish');
+      const intermediateCheckpoints = checkpoints
+        .filter(c => c.type === 'checkpoint')
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
 
       if (startCheckpoint && finishCheckpoint && !isTimerActive) {
-        console.log('Calculating routes between checkpoints');
-        const routes = await calculateRoutes(
-          startCheckpoint.latitude,
-          startCheckpoint.longitude,
-          finishCheckpoint.latitude,
-          finishCheckpoint.longitude
-        );
+        console.log('Calculating routes with', intermediateCheckpoints.length, 'intermediate checkpoints');
+        
+        const waypoints = [
+          { latitude: startCheckpoint.latitude, longitude: startCheckpoint.longitude },
+          ...intermediateCheckpoints.map(c => ({ latitude: c.latitude, longitude: c.longitude })),
+          { latitude: finishCheckpoint.latitude, longitude: finishCheckpoint.longitude }
+        ];
+
+        const routes = await calculateRoutesWithCheckpoints(waypoints);
         setRouteOptions(routes);
         if (routes.length > 0 && !selectedRouteId) {
           setSelectedRouteId(routes[0].id);
@@ -1482,12 +1489,18 @@ export default function MapScreen() {
       const snappedLocation = await snapToNearestRoad(latitude, longitude);
       
       if (snappedLocation) {
+        const intermediateCount = checkpoints.filter(c => c.type === 'checkpoint').length;
         const newCheckpoint: Checkpoint = {
           id: `checkpoint_${Date.now()}`,
           type: isAddingCheckpoint,
           latitude: snappedLocation.latitude,
           longitude: snappedLocation.longitude,
-          name: isAddingCheckpoint === 'start' ? 'Start' : 'Finish',
+          name: isAddingCheckpoint === 'start' 
+            ? 'Start' 
+            : isAddingCheckpoint === 'finish' 
+            ? 'Finish' 
+            : `Checkpoint ${intermediateCount + 1}`,
+          order: isAddingCheckpoint === 'checkpoint' ? intermediateCount : undefined,
         };
 
         addCheckpoint(newCheckpoint);
@@ -1822,7 +1835,13 @@ export default function MapScreen() {
                 longitude: checkpoint.longitude,
               }}
               title={checkpoint.name}
-              pinColor={checkpoint.type === 'start' ? '#34C759' : '#FF3B30'}
+              pinColor={
+                checkpoint.type === 'start' 
+                  ? '#34C759' 
+                  : checkpoint.type === 'finish' 
+                  ? '#FF3B30' 
+                  : '#FF9500'
+              }
               onPress={() => {
                 Alert.alert(
                   checkpoint.name,
@@ -1847,12 +1866,16 @@ export default function MapScreen() {
               strokeColor={
                 checkpoint.type === 'start'
                   ? 'rgba(52, 199, 89, 0.3)'
-                  : 'rgba(255, 59, 48, 0.3)'
+                  : checkpoint.type === 'finish'
+                  ? 'rgba(255, 59, 48, 0.3)'
+                  : 'rgba(255, 149, 0, 0.3)'
               }
               fillColor={
                 checkpoint.type === 'start'
                   ? 'rgba(52, 199, 89, 0.1)'
-                  : 'rgba(255, 59, 48, 0.1)'
+                  : checkpoint.type === 'finish'
+                  ? 'rgba(255, 59, 48, 0.1)'
+                  : 'rgba(255, 149, 0, 0.1)'
               }
             />
           </React.Fragment>
@@ -1981,6 +2004,22 @@ export default function MapScreen() {
         >
           <Play size={20} color="#fff" fill={isAddingCheckpoint === 'start' ? '#fff' : 'transparent'} />
           <Text style={styles.addButtonText}>Start</Text>
+        </Pressable>
+
+        <Pressable
+          testID="toggle-checkpoint"
+          style={[
+            styles.addButton,
+            isAddingCheckpoint === 'checkpoint' && styles.addButtonActive,
+            { backgroundColor: isAddingCheckpoint === 'checkpoint' ? 'rgba(255, 149, 0, 0.95)' : 'rgba(0, 122, 255, 0.95)' },
+          ]}
+          onPress={() => {
+            setIsAddingCheckpoint(isAddingCheckpoint === 'checkpoint' ? null : 'checkpoint');
+            setIsAddingSpeedCamera(false);
+          }}
+        >
+          <MapPin size={20} color="#fff" fill={isAddingCheckpoint === 'checkpoint' ? '#fff' : 'transparent'} />
+          <Text style={styles.addButtonText}>+</Text>
         </Pressable>
 
         <Pressable

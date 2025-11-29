@@ -1,9 +1,10 @@
 export interface Checkpoint {
   id: string;
-  type: 'start' | 'finish';
+  type: 'start' | 'finish' | 'checkpoint';
   latitude: number;
   longitude: number;
   name: string;
+  order?: number;
 }
 
 export interface GhostPoint {

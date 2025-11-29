@@ -173,6 +173,27 @@ export async function calculateRoutes(
   endLat: number,
   endLon: number
 ): Promise<RouteOption[]> {
+  return calculateRoutesInternal([{ latitude: startLat, longitude: startLon }, { latitude: endLat, longitude: endLon }]);
+}
+
+export async function calculateRoutesWithCheckpoints(
+  waypoints: { latitude: number; longitude: number }[]
+): Promise<RouteOption[]> {
+  return calculateRoutesInternal(waypoints);
+}
+
+async function calculateRoutesInternal(
+  waypoints: { latitude: number; longitude: number }[]
+): Promise<RouteOption[]> {
+  if (waypoints.length < 2) {
+    console.error('At least 2 waypoints required');
+    return [];
+  }
+
+  const startLat = waypoints[0].latitude;
+  const startLon = waypoints[0].longitude;
+  const endLat = waypoints[waypoints.length - 1].latitude;
+  const endLon = waypoints[waypoints.length - 1].longitude;
   const cacheKey = `${startLat.toFixed(5)}_${startLon.toFixed(5)}_${endLat.toFixed(5)}_${endLon.toFixed(5)}`;
   const cached = routeCache.get(cacheKey);
   const now = Date.now();
@@ -187,8 +208,9 @@ export async function calculateRoutes(
   const routes: RouteOption[] = [];
 
   try {
-    const url = `${OSRM_BASE_URL}/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson&alternatives=3&steps=true&continue_straight=false`;
-    console.log('Fetching route from OSRM:', url);
+    const waypointsStr = waypoints.map(wp => `${wp.longitude},${wp.latitude}`).join(';');
+    const url = `${OSRM_BASE_URL}/${waypointsStr}?overview=full&geometries=geojson&alternatives=${waypoints.length === 2 ? '3' : '1'}&steps=true&continue_straight=false`;
+    console.log('Fetching route from OSRM with', waypoints.length, 'waypoints:', url);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
