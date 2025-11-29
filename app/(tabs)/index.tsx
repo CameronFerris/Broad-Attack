@@ -1653,7 +1653,7 @@ export default function MapScreen() {
         onPress={handleMapPress}
         onTouchStart={handleMapTouchStart}
       >
-        {!isTimerActive && !viewingHistoricalRun && routeOptions.map((route) => {
+        {!isTimerActive && !viewingHistoricalRun && !isRouteConfirmed && routeOptions.map((route) => {
           const isSelected = route.id === selectedRouteId;
           const isFastest = route.id === routeOptions[0]?.id;
           
