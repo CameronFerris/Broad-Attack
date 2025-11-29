@@ -5,12 +5,12 @@ import { calculateRoutes } from '@/lib/route-service';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updatePartyMemberLocation, subscribeToPartyMemberLocations, removePartyMemberLocation, type DbPartyMemberLocation } from '@/lib/database-service';
-import { LocationTracker, BatchedLocationUploader, interpolatePosition } from '@/lib/location-tracker';
+import { BatchedLocationUploader } from '@/lib/location-tracker';
 import PartyResultsModal from '@/components/PartyResultsModal';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
-import { PREDEFINED_SPEED_CAMERAS, getNearbyPredefinedCameras, isApproachingCamera } from '@/constants/speed-cameras';
+import { getNearbyPredefinedCameras, isApproachingCamera } from '@/constants/speed-cameras';
 import { 
   Flag, 
   MapPin, 
@@ -43,8 +43,6 @@ const PROXIMITY_THRESHOLD = 5;
 const FINISH_EXIT_THRESHOLD = 50;
 const SPEED_CONVERSION_FACTOR = 3.6;
 const KMH_TO_MPH = 0.621371;
-const NAVIGATION_INTERVAL_MS = 4000;
-const RALLY_NAVIGATION_INTERVAL_MS = 3000;
 const SPEED_CAMERA_WARNING_DISTANCE = 500; // Increased warning distance to 500m for earlier alerts
 const LOCATION_UPDATE_INTERVAL = 100;
 const ROAD_NAME_UPDATE_INTERVAL = 8000;
@@ -54,7 +52,6 @@ const ROAD_LOOKAHEAD_DISTANCE = 800;
 const RALLY_LOOKAHEAD_DISTANCE = 1200;
 const TURN_DETECTION_THRESHOLD = 12;
 const RALLY_TURN_DETECTION_THRESHOLD = 10;
-const GHOST_INTERPOLATION_SMOOTHING = 5;
 
 const MPH_COUNTRIES = [
   'US',
@@ -141,12 +138,8 @@ export default function MapScreen() {
   const hasAnnouncedStartRef = useRef(false);
   const hasAnnouncedFinishRef = useRef(false);
   const hasLeftFinishPointRef = useRef(false);
-  const lastNavigationAnnouncementRef = useRef<number>(0);
   const lastAnnouncedInstruction = useRef<string | null>(null);
-  const announcedSpeedCameraIds = useRef<Set<string>>(new Set());
-  const locationTracker = useRef(new LocationTracker());
   const locationUploader = useRef(new BatchedLocationUploader());
-  const partyMemberInterpolated = useRef<Map<string, { latitude: number; longitude: number; timestamp: number }[]>>(new Map());
   const announcedCameraDistances = useRef<Map<string, Set<number>>>(new Map());
 
   const lastHeadingRef = useRef<number | null>(null);
@@ -155,7 +148,6 @@ export default function MapScreen() {
   const hasUserInteracted = useRef<boolean>(false);
   const lastLocationRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const isUserMoving = useRef<boolean>(false);
-  const [roadSegments, setRoadSegments] = useState<RoadSegment[]>([]);
   const roadSegmentsRef = useRef<RoadSegment[]>([]);
   const [viewingHistoricalRun, setViewingHistoricalRun] = useState<boolean>(false);
   const [historicalStartCheckpoint, setHistoricalStartCheckpoint] = useState<Checkpoint | null>(null);
@@ -189,19 +181,16 @@ export default function MapScreen() {
     setVoiceNavigationMode,
     addSpeedCamera,
     removeSpeedCamera,
-    clearSpeedCameras,
     recordGhostPoint,
     toggleGhost,
     getBestRunForCourse,
   } = useDriveTrack();
 
-  const { showTraffic, mapType, distanceUnit, showSpeed, autoZoom, highAccuracyGPS, batterySaver, isDarkMode, navigationVolume, mapOrientation } = useSettings();
+  const { showTraffic, mapType, showSpeed, autoZoom, highAccuracyGPS, batterySaver, navigationVolume, mapOrientation } = useSettings();
   
   const memoizedCheckpoints = useMemo(() => checkpoints, [checkpoints]);
-  // Combine user-added cameras with predefined cameras
   const [nearbyCameras, setNearbyCameras] = useState<SpeedCamera[]>([]);
   const memoizedSpeedCameras = useMemo(() => {
-    // Combine user cameras with predefined cameras, avoiding duplicates
     const allCameras = [...speedCameras];
     const cameraIds = new Set(speedCameras.map(c => c.id));
     
@@ -213,7 +202,6 @@ export default function MapScreen() {
     
     return allCameras;
   }, [speedCameras, nearbyCameras]);
-  const memoizedPartyMemberLocations = useMemo(() => partyMemberLocations, [partyMemberLocations]);
 
   useEffect(() => {
     const init = async () => {
@@ -225,6 +213,7 @@ export default function MapScreen() {
       if (userName) setCurrentUserName(userName);
     };
     init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load predefined speed cameras when we have location or on app start
@@ -236,8 +225,6 @@ export default function MapScreen() {
     
     // When we have user location, prioritize nearby cameras but keep all
     if (location) {
-      const nearby = getNearbyPredefinedCameras(location.latitude, location.longitude, 500); // 500km radius
-      // Sort cameras by distance from user
       const sortedCameras = [...allCameras].sort((a, b) => {
         const distA = calculateDistance(location.latitude, location.longitude, a.latitude, a.longitude);
         const distB = calculateDistance(location.latitude, location.longitude, b.latitude, b.longitude);
@@ -246,6 +233,7 @@ export default function MapScreen() {
       setNearbyCameras(sortedCameras);
       console.log(`Sorted ${sortedCameras.length} speed cameras by distance from user`);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location?.latitude, location?.longitude]);
 
   const setupAudioSession = async () => {
@@ -359,6 +347,7 @@ export default function MapScreen() {
     };
 
     fetchRoutes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkpoints, isTimerActive]);
 
   useEffect(() => {
@@ -500,7 +489,6 @@ export default function MapScreen() {
                   startTimer();
                   hasAnnouncedStartRef.current = true;
                   hasAnnouncedFinishRef.current = false;
-                  lastNavigationAnnouncementRef.current = 0;
                   lastAnnouncedInstruction.current = null;
                   
                   const finishCheckpoint = checkpoints.find(c => c.type === 'finish');
@@ -615,7 +603,6 @@ export default function MapScreen() {
                   isRally
                 );
                 roadSegmentsRef.current = segments;
-                setRoadSegments(segments);
 
                 const upcomingTurns = detectUpcomingTurns(segments, newLocation.heading, isRally);
 
@@ -812,26 +799,7 @@ export default function MapScreen() {
             lowerName.includes('speedway') ||
             lowerName.includes('raceway');
           
-          const isProbablyHouse = 
-            !lowerName.includes('road') &&
-            !lowerName.includes('street') &&
-            !lowerName.includes('avenue') &&
-            !lowerName.includes('lane') &&
-            !lowerName.includes('drive') &&
-            !lowerName.includes('way') &&
-            !lowerName.includes('boulevard') &&
-            !lowerName.includes('highway') &&
-            !lowerName.includes('route') &&
-            !lowerName.includes('expressway') &&
-            !lowerName.includes('motorway') &&
-            !lowerName.includes('parkway') &&
-            !lowerName.includes('circuit') &&
-            !lowerName.includes('track') &&
-            !lowerName.includes('speedway') &&
-            !lowerName.includes('raceway') &&
-            lowerName !== lowerStreet;
-          
-          if (isRoadType && !road.toLowerCase().includes(lowerName)) {
+          if (isRoadType && !lowerStreet.includes(lowerName)) {
             road = result.name;
           }
         }
@@ -1355,14 +1323,6 @@ export default function MapScreen() {
       );
 
       if (distance <= SPEED_CAMERA_WARNING_DISTANCE) {
-        // Enhanced direction detection: Check if on same road and approaching
-        const bearingToCamera = calculateBearing(
-          currentLocation.latitude,
-          currentLocation.longitude,
-          camera.latitude,
-          camera.longitude
-        );
-        
         // Check if user is moving towards the camera
         const isApproaching = currentLocation.heading !== null && 
           isApproachingCamera(
