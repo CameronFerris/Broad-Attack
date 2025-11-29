@@ -448,7 +448,8 @@ export default function MapScreen() {
             distanceInterval: batterySaver ? 10 : 0.1,
           },
           async (loc) => {
-            const speedInKmh = (loc.coords.speed ?? 0) * SPEED_CONVERSION_FACTOR;
+            const speedMetersPerSecond = loc.coords.speed ?? 0;
+            const speedInKmh = Math.max(0, speedMetersPerSecond * SPEED_CONVERSION_FACTOR);
             
             const newLocation: LocationData = {
               latitude: loc.coords.latitude,
