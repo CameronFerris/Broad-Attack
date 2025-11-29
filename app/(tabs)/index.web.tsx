@@ -1,4 +1,5 @@
 import { useDriveTrack } from '@/contexts/DriveTrackContext';
+import { getDisplayRoadName } from '@/lib/road-name';
 import * as Location from 'expo-location';
 import { MapPin } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
@@ -79,7 +80,7 @@ export default function MapScreen() {
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (results.length > 0) {
         const result = results[0];
-        const road = result.street || result.name || 'Unknown Road';
+        const road = getDisplayRoadName(result);
         setCurrentRoad(road);
       }
     } catch (error) {

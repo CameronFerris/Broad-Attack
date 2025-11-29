@@ -2,6 +2,7 @@ import { useDriveTrack } from '@/contexts/DriveTrackContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { Checkpoint, LocationData, SpeedUnit, NavigationInstruction, RallyPacenote, RallyModifier, RallyCrest, RallyWarning, SpeedCamera, RoadSegment, UpcomingTurn, RouteOption, GhostPoint } from '@/types/map';
 import { calculateRoutes } from '@/lib/route-service';
+import { getDisplayRoadName, sanitizeRoadLabel } from '@/lib/road-name';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updatePartyMemberLocation, subscribeToPartyMemberLocations, removePartyMemberLocation, type DbPartyMemberLocation } from '@/lib/database-service';
@@ -819,35 +820,7 @@ export default function MapScreen() {
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (results.length > 0) {
         const result = results[0];
-        let road = result.street || 'Unknown Road';
-        
-        if (road !== 'Unknown Road' && result.name && result.name !== result.street) {
-          const lowerName = result.name.toLowerCase();
-          const lowerStreet = road.toLowerCase();
-          
-          const isRoadType = 
-            lowerName.includes('road') ||
-            lowerName.includes('street') ||
-            lowerName.includes('avenue') ||
-            lowerName.includes('lane') ||
-            lowerName.includes('drive') ||
-            lowerName.includes('way') ||
-            lowerName.includes('boulevard') ||
-            lowerName.includes('highway') ||
-            lowerName.includes('route') ||
-            lowerName.includes('expressway') ||
-            lowerName.includes('motorway') ||
-            lowerName.includes('parkway') ||
-            lowerName.includes('circuit') ||
-            lowerName.includes('track') ||
-            lowerName.includes('speedway') ||
-            lowerName.includes('raceway');
-          
-          if (isRoadType && !lowerStreet.includes(lowerName)) {
-            road = result.name;
-          }
-        }
-        
+        const road = getDisplayRoadName(result);
         setCurrentRoad(road);
       }
     } catch (error) {
@@ -1456,25 +1429,25 @@ export default function MapScreen() {
       
       if (results.length > 0) {
         const result = results[0];
-        const roadName = result.street || result.name;
-        
-        const isRaceTrack = roadName && (
-          roadName.toLowerCase().includes('circuit') ||
-          roadName.toLowerCase().includes('track') ||
-          roadName.toLowerCase().includes('speedway') ||
-          roadName.toLowerCase().includes('raceway') ||
-          roadName.toLowerCase().includes('autodrom') ||
-          roadName.toLowerCase().includes('motorsport')
-        );
-        
-        const hasStreet = result.street || result.name;
-        
+        const sanitizedStreet = sanitizeRoadLabel(result.street);
+        const sanitizedName = sanitizeRoadLabel(result.name);
+        const roadName = sanitizedStreet ?? sanitizedName ?? null;
+        const raceTrackLabel = sanitizedName ?? sanitizedStreet ?? '';
+        const lowerTrackLabel = raceTrackLabel.toLowerCase();
+        const isRaceTrack = lowerTrackLabel.includes('circuit') ||
+          lowerTrackLabel.includes('track') ||
+          lowerTrackLabel.includes('speedway') ||
+          lowerTrackLabel.includes('raceway') ||
+          lowerTrackLabel.includes('autodrom') ||
+          lowerTrackLabel.includes('motorsport');
+        const hasStreet = Boolean(roadName);
         if (hasStreet || isRaceTrack) {
-          console.log('Snapped to road:', roadName, 'at', latitude, longitude);
+          const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
+          console.log('Snapped to road:', resolvedRoadName, 'at', latitude, longitude);
           return {
             latitude,
             longitude,
-            roadName,
+            roadName: resolvedRoadName,
           };
         } else {
           console.log('No road found at this location');
