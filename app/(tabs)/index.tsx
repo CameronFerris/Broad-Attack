@@ -1432,52 +1432,82 @@ export default function MapScreen() {
 
   const snapToNearestRoad = async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
     try {
+      console.log('Validating location:', latitude, longitude);
+      
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       
-      if (results.length > 0) {
-        const result = results[0];
-        const sanitizedStreet = sanitizeRoadLabel(result.street);
-        const sanitizedName = sanitizeRoadLabel(result.name);
-        const roadName = sanitizedStreet ?? sanitizedName ?? null;
-        const raceTrackLabel = sanitizedName ?? sanitizedStreet ?? '';
-        const lowerTrackLabel = raceTrackLabel.toLowerCase();
-        const isRaceTrack = lowerTrackLabel.includes('circuit') ||
-          lowerTrackLabel.includes('track') ||
-          lowerTrackLabel.includes('speedway') ||
-          lowerTrackLabel.includes('raceway') ||
-          lowerTrackLabel.includes('autodrom') ||
-          lowerTrackLabel.includes('motorsport');
-        const hasStreet = Boolean(roadName);
-        if (hasStreet || isRaceTrack) {
-          const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
-          console.log('Snapped to road:', resolvedRoadName, 'at', latitude, longitude);
-          return {
-            latitude,
-            longitude,
-            roadName: resolvedRoadName,
-          };
-        } else {
-          console.log('No road found at this location');
-          Alert.alert(
-            'Invalid Location',
-            'Please place the checkpoint on a road or race track. The selected location appears to be in an inaccessible area.',
-            [{ text: 'OK' }]
-          );
-          return null;
-        }
+      if (results.length === 0) {
+        console.log('No geocoding results found');
+        Alert.alert(
+          'Location Not Found',
+          'Unable to identify this location. Please try another spot on the map.',
+          [{ text: 'OK' }]
+        );
+        return null;
+      }
+
+      const result = results[0];
+      console.log('Geocoding result:', {
+        street: result.street,
+        name: result.name,
+        district: result.district,
+        city: result.city,
+        region: result.region,
+      });
+      
+      const sanitizedStreet = sanitizeRoadLabel(result.street);
+      const sanitizedName = sanitizeRoadLabel(result.name);
+      const roadName = sanitizedStreet ?? sanitizedName ?? null;
+      const raceTrackLabel = sanitizedName ?? sanitizedStreet ?? '';
+      const lowerTrackLabel = raceTrackLabel.toLowerCase();
+      
+      const isRaceTrack = lowerTrackLabel.includes('circuit') ||
+        lowerTrackLabel.includes('track') ||
+        lowerTrackLabel.includes('speedway') ||
+        lowerTrackLabel.includes('raceway') ||
+        lowerTrackLabel.includes('autodrom') ||
+        lowerTrackLabel.includes('motorsport') ||
+        lowerTrackLabel.includes('racetrack') ||
+        lowerTrackLabel.includes('race track');
+      
+      const hasStreet = Boolean(roadName);
+      
+      if (!hasStreet && !isRaceTrack) {
+        console.log('Location not on a road or race track');
+        Alert.alert(
+          'Invalid Location',
+          'Please place the checkpoint on a road or race track. This location appears to be in a field, building, or inaccessible area.\n\nTry placing it on a visible road line on the map.',
+          [{ text: 'OK' }]
+        );
+        return null;
       }
       
-      return null;
+      const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
+      console.log('✓ Valid road/track location:', resolvedRoadName);
+      
+      return {
+        latitude,
+        longitude,
+        roadName: resolvedRoadName,
+      };
     } catch (error) {
-      console.error('Error snapping to road:', error);
+      console.error('Error validating location:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
+      
       if (errorMessage.includes('rate limit')) {
         Alert.alert(
           'Too Many Requests',
-          'Please wait a moment before placing another checkpoint.',
+          'Please wait a moment before placing another checkpoint. The geocoding service needs a short break.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Validation Error',
+          'Unable to validate this location. Please try again or choose a different spot.',
           [{ text: 'OK' }]
         );
       }
+      
       return null;
     }
   };
