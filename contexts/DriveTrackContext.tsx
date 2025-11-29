@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import createContextHook from '@nkzw/create-context-hook';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Checkpoint, RunRecord, UserLocationInfo, VoiceMode, SpeedCamera, GhostPoint, ActiveRunPath } from '@/types/map';
 import { submitRaceResult, uploadGhostRace } from '@/lib/database-service';
 import { DEFAULT_PARTY_ID } from '@/constants/appLink';
@@ -12,8 +12,27 @@ const SPEED_CAMERAS_KEY = '@drivetrack_speed_cameras';
 const USER_ID_KEY = '@timeattack_user_id';
 const CURRENT_PARTY_KEY = '@drivetrack_party_id';
 
+type CheckpointStoragePayload = {
+  sessionId: string;
+  data: Checkpoint[];
+  updatedAt: number;
+};
+
+const isCheckpointPayload = (value: unknown): value is CheckpointStoragePayload => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const payload = value as Partial<CheckpointStoragePayload>;
+  return (
+    typeof payload.sessionId === 'string' &&
+    Array.isArray(payload.data) &&
+    typeof payload.updatedAt === 'number'
+  );
+};
+
 export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
   const { hasConsent: hasTrackingConsent } = useTrackingPermission();
+  const sessionIdRef = useRef<string>(`session_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [isTimerActive, setIsTimerActive] = useState<boolean>(false);
@@ -43,15 +62,32 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
   const loadCheckpoints = async () => {
     try {
       const stored = await AsyncStorage.getItem(CHECKPOINTS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setCheckpoints(parsed);
-        } else {
-          console.warn('Invalid checkpoints data format, clearing');
-          await AsyncStorage.removeItem(CHECKPOINTS_KEY);
-        }
+      if (!stored) {
+        return;
       }
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(stored);
+      } catch (parseError) {
+        console.error('Error parsing checkpoint payload:', parseError);
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY);
+        return;
+      }
+
+      if (!isCheckpointPayload(parsed)) {
+        console.log('Discarding legacy checkpoint data from a previous session');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY);
+        return;
+      }
+
+      if (parsed.sessionId !== sessionIdRef.current) {
+        console.log('Cleared checkpoints saved by a previous app session');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY);
+        return;
+      }
+
+      setCheckpoints(parsed.data);
     } catch (error) {
       console.error('Error loading checkpoints:', error);
       await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => console.error('Failed to clear corrupted data:', e));
@@ -101,13 +137,22 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
     }
   };
 
-  const saveCheckpoints = async (newCheckpoints: Checkpoint[]) => {
+  const persistCheckpointPayload = useCallback(async (data: Checkpoint[]) => {
+    const payload: CheckpointStoragePayload = {
+      sessionId: sessionIdRef.current,
+      data,
+      updatedAt: Date.now(),
+    };
+    await AsyncStorage.setItem(CHECKPOINTS_KEY, JSON.stringify(payload));
+  }, []);
+
+  const saveCheckpoints = useCallback(async (newCheckpoints: Checkpoint[]) => {
     try {
       if (!Array.isArray(newCheckpoints)) {
         console.error('Invalid checkpoint data type');
         return;
       }
-      await AsyncStorage.setItem(CHECKPOINTS_KEY, JSON.stringify(newCheckpoints));
+      await persistCheckpointPayload(newCheckpoints);
       setCheckpoints(newCheckpoints);
     } catch (error) {
       console.error('Error saving checkpoints:', error);
@@ -115,7 +160,7 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
         console.error('Storage quota exceeded');
       }
     }
-  };
+  }, [persistCheckpointPayload]);
 
   const saveRuns = async (newRuns: RunRecord[]) => {
     try {
@@ -159,7 +204,7 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
       saveCheckpoints(newCheckpoints);
       return newCheckpoints;
     });
-  }, []);
+  }, [saveCheckpoints]);
 
   const removeCheckpoint = useCallback((id: string) => {
     setCheckpoints(prev => {
@@ -167,11 +212,11 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
       saveCheckpoints(newCheckpoints);
       return newCheckpoints;
     });
-  }, []);
+  }, [saveCheckpoints]);
 
   const clearCheckpoints = useCallback(() => {
     saveCheckpoints([]);
-  }, []);
+  }, [saveCheckpoints]);
 
   const startTimer = useCallback(() => {
     console.log('Timer started');
