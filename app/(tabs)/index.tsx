@@ -1437,13 +1437,8 @@ export default function MapScreen() {
       const results = await Location.reverseGeocodeAsync({ latitude, longitude });
       
       if (results.length === 0) {
-        console.log('No geocoding results found');
-        Alert.alert(
-          'Location Not Found',
-          'Unable to identify this location. Please try another spot on the map.',
-          [{ text: 'OK' }]
-        );
-        return null;
+        console.log('No geocoding results found - trying to snap to nearest road');
+        return await trySnapToNearestRoad(latitude, longitude);
       }
 
       const result = results[0];
@@ -1473,13 +1468,8 @@ export default function MapScreen() {
       const hasStreet = Boolean(roadName);
       
       if (!hasStreet && !isRaceTrack) {
-        console.log('Location not on a road or race track');
-        Alert.alert(
-          'Invalid Location',
-          'Please place the checkpoint on a road or race track. This location appears to be in a field, building, or inaccessible area.\n\nTry placing it on a visible road line on the map.',
-          [{ text: 'OK' }]
-        );
-        return null;
+        console.log('Location not on a road or race track - trying to snap to nearest road');
+        return await trySnapToNearestRoad(latitude, longitude);
       }
       
       const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
@@ -1510,6 +1500,88 @@ export default function MapScreen() {
       
       return null;
     }
+  };
+
+  const trySnapToNearestRoad = async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
+    console.log('Attempting to snap to nearest road...');
+    
+    const searchRadii = [0.001, 0.002, 0.005, 0.01];
+    const directions = [
+      { lat: 0, lon: 1 },
+      { lat: 0, lon: -1 },
+      { lat: 1, lon: 0 },
+      { lat: -1, lon: 0 },
+      { lat: 0.707, lon: 0.707 },
+      { lat: -0.707, lon: 0.707 },
+      { lat: 0.707, lon: -0.707 },
+      { lat: -0.707, lon: -0.707 },
+    ];
+    
+    for (const radius of searchRadii) {
+      console.log(`Searching for roads within ${radius} degree radius...`);
+      
+      for (const dir of directions) {
+        const testLat = latitude + (dir.lat * radius);
+        const testLon = longitude + (dir.lon * radius);
+        
+        try {
+          const testResults = await Location.reverseGeocodeAsync({ 
+            latitude: testLat, 
+            longitude: testLon 
+          });
+          
+          if (testResults.length === 0) continue;
+          
+          const testResult = testResults[0];
+          const sanitizedStreet = sanitizeRoadLabel(testResult.street);
+          const sanitizedName = sanitizeRoadLabel(testResult.name);
+          const roadName = sanitizedStreet ?? sanitizedName ?? null;
+          const raceTrackLabel = sanitizedName ?? sanitizedStreet ?? '';
+          const lowerTrackLabel = raceTrackLabel.toLowerCase();
+          
+          const isRaceTrack = lowerTrackLabel.includes('circuit') ||
+            lowerTrackLabel.includes('track') ||
+            lowerTrackLabel.includes('speedway') ||
+            lowerTrackLabel.includes('raceway') ||
+            lowerTrackLabel.includes('autodrom') ||
+            lowerTrackLabel.includes('motorsport') ||
+            lowerTrackLabel.includes('racetrack') ||
+            lowerTrackLabel.includes('race track');
+          
+          const hasStreet = Boolean(roadName);
+          
+          if (hasStreet || isRaceTrack) {
+            const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
+            const distanceMeters = calculateDistance(latitude, longitude, testLat, testLon);
+            console.log(`✓ Snapped to nearest road: ${resolvedRoadName} (${Math.round(distanceMeters)}m away)`);
+            
+            Alert.alert(
+              'Point Adjusted',
+              `The point was automatically placed on the nearest road: ${resolvedRoadName} (${Math.round(distanceMeters)}m away)`,
+              [{ text: 'OK' }]
+            );
+            
+            return {
+              latitude: testLat,
+              longitude: testLon,
+              roadName: resolvedRoadName,
+            };
+          }
+        } catch (err) {
+          continue;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+    
+    console.log('Unable to find nearby road');
+    Alert.alert(
+      'No Road Found',
+      'Unable to find a nearby road or race track. Please try placing the point on a visible road on the map.',
+      [{ text: 'OK' }]
+    );
+    return null;
   };
 
   const handleMapPress = useCallback(async (event: any) => {
