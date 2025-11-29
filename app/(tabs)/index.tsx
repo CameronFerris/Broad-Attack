@@ -2032,14 +2032,15 @@ export default function MapScreen() {
             setIsAddingSpeedCamera(false);
           }}
         >
-          <Play size={20} color="#fff" fill={isAddingCheckpoint === 'start' ? '#fff' : 'transparent'} />
-          <Text style={styles.addButtonText}>Start</Text>
+          <Play size={18} color="#fff" fill={isAddingCheckpoint === 'start' ? '#fff' : 'transparent'} />
+          <Text style={styles.addButtonText} numberOfLines={1}>Start</Text>
         </Pressable>
 
         <Pressable
           testID="toggle-checkpoint"
           style={[
             styles.addButton,
+            styles.checkpointButton,
             isAddingCheckpoint === 'checkpoint' && styles.addButtonActive,
             { backgroundColor: isAddingCheckpoint === 'checkpoint' ? 'rgba(255, 149, 0, 0.95)' : 'rgba(0, 122, 255, 0.95)' },
           ]}
@@ -2048,8 +2049,7 @@ export default function MapScreen() {
             setIsAddingSpeedCamera(false);
           }}
         >
-          <MapPin size={20} color="#fff" fill={isAddingCheckpoint === 'checkpoint' ? '#fff' : 'transparent'} />
-          <Text style={styles.addButtonText}>+</Text>
+          <MapPin size={18} color="#fff" fill={isAddingCheckpoint === 'checkpoint' ? '#fff' : 'transparent'} />
         </Pressable>
 
         <Pressable
@@ -2063,8 +2063,8 @@ export default function MapScreen() {
             setIsAddingSpeedCamera(false);
           }}
         >
-          <Flag size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Finish</Text>
+          <Flag size={18} color="#fff" />
+          <Text style={styles.addButtonText} numberOfLines={1}>Finish</Text>
         </Pressable>
 
         <Pressable
@@ -2565,19 +2565,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     shadowColor: '#007AFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
+  checkpointButton: {
+    flex: 0.6,
+    paddingHorizontal: 12,
+  },
   addButtonActive: {
     backgroundColor: 'rgba(52, 199, 89, 0.95)',
     shadowColor: '#34C759',
   },
   addButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700' as const,
     color: '#fff',
   },
