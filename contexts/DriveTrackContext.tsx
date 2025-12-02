@@ -63,6 +63,7 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
     try {
       const stored = await AsyncStorage.getItem(CHECKPOINTS_KEY);
       if (!stored) {
+        console.log('No stored checkpoints found');
         return;
       }
 
@@ -71,26 +72,45 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
         parsed = JSON.parse(stored);
       } catch (parseError) {
         console.error('Error parsing checkpoint payload:', parseError);
-        await AsyncStorage.removeItem(CHECKPOINTS_KEY);
+        console.log('Clearing corrupted checkpoint data');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => 
+          console.error('Failed to clear corrupted checkpoint data:', e)
+        );
         return;
       }
 
       if (!isCheckpointPayload(parsed)) {
-        console.log('Discarding legacy checkpoint data from a previous session');
-        await AsyncStorage.removeItem(CHECKPOINTS_KEY);
+        console.log('Invalid checkpoint format - clearing legacy data');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => 
+          console.error('Failed to clear legacy checkpoint data:', e)
+        );
         return;
       }
 
       if (parsed.sessionId !== sessionIdRef.current) {
-        console.log('Cleared checkpoints saved by a previous app session');
-        await AsyncStorage.removeItem(CHECKPOINTS_KEY);
+        console.log('Different session detected - checkpoints cleared automatically');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => 
+          console.error('Failed to clear old session data:', e)
+        );
         return;
       }
 
+      if (!Array.isArray(parsed.data)) {
+        console.error('Invalid checkpoint data structure');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => 
+          console.error('Failed to clear invalid data:', e)
+        );
+        return;
+      }
+
+      console.log(`Loaded ${parsed.data.length} checkpoints from storage`);
       setCheckpoints(parsed.data);
     } catch (error) {
-      console.error('Error loading checkpoints:', error);
-      await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => console.error('Failed to clear corrupted data:', e));
+      console.error('Fatal error loading checkpoints:', error);
+      await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => 
+        console.error('Failed to clear corrupted data after fatal error:', e)
+      );
+      setCheckpoints([]);
     }
   };
 
@@ -138,12 +158,35 @@ export const [DriveTrackProvider, useDriveTrack] = createContextHook(() => {
   };
 
   const persistCheckpointPayload = useCallback(async (data: Checkpoint[]) => {
-    const payload: CheckpointStoragePayload = {
-      sessionId: sessionIdRef.current,
-      data,
-      updatedAt: Date.now(),
-    };
-    await AsyncStorage.setItem(CHECKPOINTS_KEY, JSON.stringify(payload));
+    try {
+      if (!Array.isArray(data)) {
+        console.error('Attempted to persist non-array checkpoint data');
+        return;
+      }
+
+      const payload: CheckpointStoragePayload = {
+        sessionId: sessionIdRef.current,
+        data,
+        updatedAt: Date.now(),
+      };
+
+      const serialized = JSON.stringify(payload);
+      if (serialized.length > 5000000) {
+        console.warn('Checkpoint data is very large:', serialized.length, 'bytes');
+      }
+
+      await AsyncStorage.setItem(CHECKPOINTS_KEY, serialized);
+      console.log(`Persisted ${data.length} checkpoints`);
+    } catch (error) {
+      console.error('Error persisting checkpoint payload:', error);
+      if (error instanceof Error && error.message.includes('quota')) {
+        console.error('Storage quota exceeded - clearing old data');
+        await AsyncStorage.removeItem(CHECKPOINTS_KEY).catch(e => 
+          console.error('Failed to clear storage:', e)
+        );
+      }
+      throw error;
+    }
   }, []);
 
   const saveCheckpoints = useCallback(async (newCheckpoints: Checkpoint[]) => {

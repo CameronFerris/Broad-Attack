@@ -1,7 +1,7 @@
 import { useDriveTrack } from '@/contexts/DriveTrackContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import type { Checkpoint, LocationData, SpeedUnit, NavigationInstruction, RallyPacenote, RallyModifier, RallyCrest, RallyWarning, SpeedCamera, RoadSegment, UpcomingTurn, RouteOption, GhostPoint } from '@/types/map';
-import { calculateRoutes, calculateRoutesWithCheckpoints } from '@/lib/route-service';
+import { calculateRoutesWithCheckpoints } from '@/lib/route-service';
 import { getDisplayRoadName, sanitizeRoadLabel } from '@/lib/road-name';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -157,8 +157,7 @@ export default function MapScreen() {
   const [currentRoad, setCurrentRoad] = useState<string>('Loading...');
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false);
   const [isAddingCheckpoint, setIsAddingCheckpoint] = useState<'start' | 'finish' | 'checkpoint' | null>(null);
-  const [passedCheckpoints, setPassedCheckpoints] = useState<Set<string>>(new Set());
-  const [nextTargetCheckpoint, setNextTargetCheckpoint] = useState<Checkpoint | null>(null);
+
   const [isAddingSpeedCamera, setIsAddingSpeedCamera] = useState<boolean>(false);
   const [nearbySpeedCamera, setNearbySpeedCamera] = useState<{ camera: SpeedCamera; distance: number } | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
@@ -456,15 +455,15 @@ export default function MapScreen() {
             distanceInterval: batterySaver ? 10 : 0.1,
           },
           async (loc) => {
-            const speedMetersPerSecond = loc.coords.speed ?? 0;
+            const speedMetersPerSecond = loc.coords?.speed ?? 0;
             const speedInKmh = Math.max(0, speedMetersPerSecond * SPEED_CONVERSION_FACTOR);
             
             const newLocation: LocationData = {
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
+              latitude: loc.coords?.latitude ?? 0,
+              longitude: loc.coords?.longitude ?? 0,
               speed: speedInKmh,
-              heading: loc.coords.heading,
-              timestamp: loc.timestamp,
+              heading: loc.coords?.heading ?? null,
+              timestamp: loc.timestamp ?? Date.now(),
             };
             
             setLocation(newLocation);
@@ -515,7 +514,9 @@ export default function MapScreen() {
             
 
             
-            getRoadName(loc.coords.latitude, loc.coords.longitude);
+            if (loc.coords?.latitude && loc.coords?.longitude) {
+              getRoadName(loc.coords.latitude, loc.coords.longitude);
+            }
             
             checkSpeedCameras(newLocation);
             
@@ -700,7 +701,11 @@ export default function MapScreen() {
         setElapsedTime(elapsed);
         
         if (activeGhostPath.length > 0 && ghostEnabled) {
-          const totalGhostTime = activeGhostPath[activeGhostPath.length - 1]?.timestamp - activeGhostPath[0]?.timestamp || 1;
+          const lastPoint = activeGhostPath[activeGhostPath.length - 1];
+          const firstPoint = activeGhostPath[0];
+          if (!lastPoint || !firstPoint) return;
+          
+          const totalGhostTime = lastPoint.timestamp - firstPoint.timestamp || 1;
           const progressRatio = elapsed / totalGhostTime;
           
           const targetIndex = Math.floor(progressRatio * (activeGhostPath.length - 1));
@@ -1567,7 +1572,7 @@ export default function MapScreen() {
               roadName: resolvedRoadName,
             };
           }
-        } catch (err) {
+        } catch {
           continue;
         }
         
@@ -1622,7 +1627,7 @@ export default function MapScreen() {
       setIsAddingSpeedCamera(false);
       console.log('Added speed camera:', newCamera);
     }
-  }, [isAddingCheckpoint, isAddingSpeedCamera, addCheckpoint, addSpeedCamera]);
+  }, [isAddingCheckpoint, isAddingSpeedCamera, checkpoints, addCheckpoint, addSpeedCamera, snapToNearestRoad]);
 
   const centerOnUser = useCallback(() => {
     if (location && mapRef.current) {
