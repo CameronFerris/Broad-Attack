@@ -1446,7 +1446,7 @@ export default function MapScreen() {
 
 
 
-  const trySnapToNearestRoad = async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
+  const trySnapToNearestRoad = useCallback(async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
     console.log('Attempting to snap to nearest road...');
     
     const searchRadii = [0.001, 0.002, 0.005, 0.01];
@@ -1526,7 +1526,7 @@ export default function MapScreen() {
       [{ text: 'OK' }]
     );
     return null;
-  };
+  }, []);
 
   const snapToNearestRoad = useCallback(async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
     try {
@@ -1598,7 +1598,7 @@ export default function MapScreen() {
       
       return null;
     }
-  }, []);
+  }, [trySnapToNearestRoad]);
 
   const handleMapPress = useCallback(async (event: any) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
