@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Trophy, X, Medal } from 'lucide-react-native';
-import { getPartyRaceResults, getPartyMembers, type DbRaceResult, type DbPartyMember } from '@/lib/database-service';
+import { getPartyRaceResults, getPartyMembers, type DbRaceResult } from '@/lib/database-service';
 
 interface PartyResultsModalProps {
   visible: boolean;

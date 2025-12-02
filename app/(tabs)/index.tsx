@@ -703,20 +703,29 @@ export default function MapScreen() {
         if (activeGhostPath.length > 0 && ghostEnabled) {
           const lastPoint = activeGhostPath[activeGhostPath.length - 1];
           const firstPoint = activeGhostPath[0];
-          if (!lastPoint || !firstPoint) return;
+          
+          if (!lastPoint || !firstPoint) {
+            console.warn('Ghost path points are invalid');
+            return;
+          }
           
           const totalGhostTime = lastPoint.timestamp - firstPoint.timestamp || 1;
-          const progressRatio = elapsed / totalGhostTime;
+          const progressRatio = Math.min(1, elapsed / totalGhostTime);
           
           const targetIndex = Math.floor(progressRatio * (activeGhostPath.length - 1));
           const clampedIndex = Math.max(0, Math.min(activeGhostPath.length - 1, targetIndex));
           
-          if (clampedIndex < activeGhostPath.length) {
+          if (clampedIndex >= 0 && clampedIndex < activeGhostPath.length) {
             const nextIndex = Math.min(clampedIndex + 1, activeGhostPath.length - 1);
-            const t = (progressRatio * (activeGhostPath.length - 1)) - clampedIndex;
+            const t = Math.max(0, Math.min(1, (progressRatio * (activeGhostPath.length - 1)) - clampedIndex));
             
             const current = activeGhostPath[clampedIndex];
             const next = activeGhostPath[nextIndex];
+            
+            if (!current || !next) {
+              console.warn('Invalid ghost path points at indices:', clampedIndex, nextIndex);
+              return;
+            }
             
             const interpolated = {
               latitude: current.latitude + (next.latitude - current.latitude) * t,
@@ -1435,77 +1444,7 @@ export default function MapScreen() {
     }
   };
 
-  const snapToNearestRoad = async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
-    try {
-      console.log('Validating location:', latitude, longitude);
-      
-      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
-      
-      if (results.length === 0) {
-        console.log('No geocoding results found - trying to snap to nearest road');
-        return await trySnapToNearestRoad(latitude, longitude);
-      }
 
-      const result = results[0];
-      console.log('Geocoding result:', {
-        street: result.street,
-        name: result.name,
-        district: result.district,
-        city: result.city,
-        region: result.region,
-      });
-      
-      const sanitizedStreet = sanitizeRoadLabel(result.street);
-      const sanitizedName = sanitizeRoadLabel(result.name);
-      const roadName = sanitizedStreet ?? sanitizedName ?? null;
-      const raceTrackLabel = sanitizedName ?? sanitizedStreet ?? '';
-      const lowerTrackLabel = raceTrackLabel.toLowerCase();
-      
-      const isRaceTrack = lowerTrackLabel.includes('circuit') ||
-        lowerTrackLabel.includes('track') ||
-        lowerTrackLabel.includes('speedway') ||
-        lowerTrackLabel.includes('raceway') ||
-        lowerTrackLabel.includes('autodrom') ||
-        lowerTrackLabel.includes('motorsport') ||
-        lowerTrackLabel.includes('racetrack') ||
-        lowerTrackLabel.includes('race track');
-      
-      const hasStreet = Boolean(roadName);
-      
-      if (!hasStreet && !isRaceTrack) {
-        console.log('Location not on a road or race track - trying to snap to nearest road');
-        return await trySnapToNearestRoad(latitude, longitude);
-      }
-      
-      const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
-      console.log('✓ Valid road/track location:', resolvedRoadName);
-      
-      return {
-        latitude,
-        longitude,
-        roadName: resolvedRoadName,
-      };
-    } catch (error) {
-      console.error('Error validating location:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
-      if (errorMessage.includes('rate limit')) {
-        Alert.alert(
-          'Too Many Requests',
-          'Please wait a moment before placing another checkpoint. The geocoding service needs a short break.',
-          [{ text: 'OK' }]
-        );
-      } else {
-        Alert.alert(
-          'Validation Error',
-          'Unable to validate this location. Please try again or choose a different spot.',
-          [{ text: 'OK' }]
-        );
-      }
-      
-      return null;
-    }
-  };
 
   const trySnapToNearestRoad = async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
     console.log('Attempting to snap to nearest road...');
@@ -1588,6 +1527,78 @@ export default function MapScreen() {
     );
     return null;
   };
+
+  const snapToNearestRoad = useCallback(async (latitude: number, longitude: number): Promise<{ latitude: number; longitude: number; roadName?: string | null } | null> => {
+    try {
+      console.log('Validating location:', latitude, longitude);
+      
+      const results = await Location.reverseGeocodeAsync({ latitude, longitude });
+      
+      if (results.length === 0) {
+        console.log('No geocoding results found - trying to snap to nearest road');
+        return await trySnapToNearestRoad(latitude, longitude);
+      }
+
+      const result = results[0];
+      console.log('Geocoding result:', {
+        street: result.street,
+        name: result.name,
+        district: result.district,
+        city: result.city,
+        region: result.region,
+      });
+      
+      const sanitizedStreet = sanitizeRoadLabel(result.street);
+      const sanitizedName = sanitizeRoadLabel(result.name);
+      const roadName = sanitizedStreet ?? sanitizedName ?? null;
+      const raceTrackLabel = sanitizedName ?? sanitizedStreet ?? '';
+      const lowerTrackLabel = raceTrackLabel.toLowerCase();
+      
+      const isRaceTrack = lowerTrackLabel.includes('circuit') ||
+        lowerTrackLabel.includes('track') ||
+        lowerTrackLabel.includes('speedway') ||
+        lowerTrackLabel.includes('raceway') ||
+        lowerTrackLabel.includes('autodrom') ||
+        lowerTrackLabel.includes('motorsport') ||
+        lowerTrackLabel.includes('racetrack') ||
+        lowerTrackLabel.includes('race track');
+      
+      const hasStreet = Boolean(roadName);
+      
+      if (!hasStreet && !isRaceTrack) {
+        console.log('Location not on a road or race track - trying to snap to nearest road');
+        return await trySnapToNearestRoad(latitude, longitude);
+      }
+      
+      const resolvedRoadName = (roadName ?? raceTrackLabel) || 'Unknown Road';
+      console.log('✓ Valid road/track location:', resolvedRoadName);
+      
+      return {
+        latitude,
+        longitude,
+        roadName: resolvedRoadName,
+      };
+    } catch (error) {
+      console.error('Error validating location:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes('rate limit')) {
+        Alert.alert(
+          'Too Many Requests',
+          'Please wait a moment before placing another checkpoint. The geocoding service needs a short break.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Validation Error',
+          'Unable to validate this location. Please try again or choose a different spot.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+      return null;
+    }
+  }, []);
 
   const handleMapPress = useCallback(async (event: any) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;

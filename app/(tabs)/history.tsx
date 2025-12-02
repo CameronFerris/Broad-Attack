@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import type { RunRecord } from '@/types/map';
 
 export default function HistoryScreen() {
-  const { runs, deleteRun, clearAllRuns, addCheckpoint, clearCheckpoints } = useDriveTrack();
+  const { runs, clearAllRuns, addCheckpoint, clearCheckpoints } = useDriveTrack();
   const { isDarkMode } = useSettings();
 
   const formatTime = (ms: number): string => {
