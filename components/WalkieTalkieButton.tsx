@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Pressable, StyleSheet, Text, Platform, Animated as RNAnimated } from 'react-native';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { View, Pressable, StyleSheet, Text, Platform, Animated as RNAnimated, useWindowDimensions } from 'react-native';
 import { Mic } from 'lucide-react-native';
 import { Audio } from 'expo-av';
 import { File } from 'expo-file-system';
@@ -19,6 +19,20 @@ export default function WalkieTalkieButton({ partyId, userId, displayName }: Wal
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const pulseAnim = useRef(new RNAnimated.Value(1)).current;
   const receivePulseAnim = useRef(new RNAnimated.Value(1)).current;
+  const { width, height } = useWindowDimensions();
+
+  const buttonSize = useMemo(() => {
+    const baseSize = width > 0 ? width * 0.18 : 60;
+    return Math.max(52, Math.min(baseSize, 64));
+  }, [width]);
+
+  const bottomOffset = useMemo(() => {
+    if (height < 680) return 104;
+    if (height < 820) return 132;
+    return 160;
+  }, [height]);
+
+  const sideOffset = useMemo(() => Math.max(16, width * 0.04), [width]);
 
   useEffect(() => {
     requestPermissions();
@@ -206,12 +220,13 @@ export default function WalkieTalkieButton({ partyId, userId, displayName }: Wal
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { bottom: bottomOffset, right: sideOffset }]}>
       {isReceiving && (
         <RNAnimated.View 
           style={[
             styles.receiveIndicator,
             {
+              top: -(buttonSize / 2 + 28),
               transform: [{ scale: receivePulseAnim }],
             },
           ]}
@@ -225,6 +240,7 @@ export default function WalkieTalkieButton({ partyId, userId, displayName }: Wal
         onPressOut={handlePressOut}
         style={({ pressed }) => [
           styles.button,
+          { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
           isRecording && styles.buttonActive,
           pressed && styles.buttonPressed,
         ]}
@@ -245,7 +261,7 @@ export default function WalkieTalkieButton({ partyId, userId, displayName }: Wal
         </RNAnimated.View>
       </Pressable>
       {isRecording && (
-        <View style={styles.recordingIndicator}>
+        <View style={[styles.recordingIndicator, { top: -(buttonSize / 2 + 18) }]}>
           <View style={styles.recordingDot} />
           <Text style={styles.recordingText}>Recording</Text>
         </View>
@@ -257,15 +273,10 @@ export default function WalkieTalkieButton({ partyId, userId, displayName }: Wal
 const styles = StyleSheet.create({
   container: {
     position: 'absolute' as const,
-    bottom: 200,
-    left: 20,
     alignItems: 'center' as const,
     gap: 12,
   },
   button: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
     backgroundColor: 'rgba(0, 122, 255, 0.95)',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -291,7 +302,6 @@ const styles = StyleSheet.create({
   },
   recordingIndicator: {
     position: 'absolute' as const,
-    top: -30,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     backgroundColor: 'rgba(255, 59, 48, 0.95)',
@@ -313,7 +323,6 @@ const styles = StyleSheet.create({
   },
   receiveIndicator: {
     position: 'absolute' as const,
-    top: -40,
     backgroundColor: 'rgba(52, 199, 89, 0.95)',
     paddingVertical: 6,
     paddingHorizontal: 14,
