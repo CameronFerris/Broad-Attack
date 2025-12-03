@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updatePartyMemberLocation, subscribeToPartyMemberLocations, removePartyMemberLocation, type DbPartyMemberLocation } from '@/lib/database-service';
 import { BatchedLocationUploader } from '@/lib/location-tracker';
 import PartyResultsModal from '@/components/PartyResultsModal';
+import WalkieTalkieButton from '@/components/WalkieTalkieButton';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import * as Speech from 'expo-speech';
 import { Audio } from 'expo-av';
@@ -2264,6 +2265,14 @@ export default function MapScreen() {
       >
         <Ghost size={24} color="#fff" />
       </Pressable>
+
+      {currentPartyId && currentUserId && currentUserName && !viewingHistoricalRun && (
+        <WalkieTalkieButton 
+          partyId={currentPartyId}
+          userId={currentUserId}
+          displayName={currentUserName}
+        />
+      )}
 
       <Pressable 
         testID="open-history-button"
