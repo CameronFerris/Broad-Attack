@@ -9,7 +9,7 @@ import { DriveTrackProvider } from "@/contexts/DriveTrackContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { TrackingPermissionProvider } from "@/contexts/TrackingPermissionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -100,6 +100,8 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const isUnsupportedTablet = Platform.OS === "ios" && Platform.isPad === true;
+
   useEffect(() => {
     const configureAudioMode = async () => {
       try {
@@ -120,6 +122,16 @@ export default function RootLayout() {
     configureAudioMode();
   }, []);
 
+  if (isUnsupportedTablet) {
+    console.log("Blocked unsupported iPad device");
+    return (
+      <View style={styles.unsupportedContainer} testID="unsupported-device">
+        <Text style={styles.unsupportedTitle}>DriveTrack is iPhone only</Text>
+        <Text style={styles.unsupportedCopy}>Open this app on an iPhone to continue.</Text>
+      </View>
+    );
+  }
+
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
@@ -136,3 +148,24 @@ export default function RootLayout() {
     </trpc.Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  unsupportedContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#050505",
+    paddingHorizontal: 24,
+  },
+  unsupportedTitle: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    marginBottom: 8,
+  },
+  unsupportedCopy: {
+    fontSize: 16,
+    color: "#E0E0E0",
+    textAlign: "center",
+  },
+});
