@@ -2277,7 +2277,7 @@ export default function MapScreen() {
       <Pressable 
         testID="open-history-button"
         style={styles.historyButton} 
-        onPress={() => router.push('/(tabs)/history')}
+        onPress={() => router.push('/history' as any)}
       >
         <Clock size={24} color="#fff" />
         {runs.length > 0 && (

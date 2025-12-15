@@ -19,7 +19,7 @@ const DISCLAIMER_KEY = "disclaimer_accepted";
 
 function RootLayoutNav() {
   const router = useRouter();
-  const segments = useSegments();
+  const segments = useSegments() as string[];
   const [isLoading, setIsLoading] = useState(true);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
 
@@ -61,10 +61,10 @@ function RootLayoutNav() {
       
       if (!disclaimerAccepted && !inDisclaimer) {
         console.log('User has not accepted disclaimer, redirecting to disclaimer page');
-        router.replace("/disclaimer");
+        router.replace({ pathname: "/disclaimer" as any });
       } else if (disclaimerAccepted && inDisclaimer) {
         console.log('User accepted disclaimer, redirecting to tabs');
-        router.replace("/(tabs)");
+        router.replace({ pathname: "/(tabs)" as any });
       }
     }
   }, [isLoading, disclaimerAccepted, router, segments]);
