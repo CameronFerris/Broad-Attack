@@ -2001,23 +2001,25 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      <View style={[styles.topInfoContainer, !showSpeed && styles.roadOnlyContainer]}>
-        {showSpeed && (
-        <View style={styles.infoCard}>
-          <Text style={styles.speedLabel}>SPEED</Text>
-          <Text style={styles.speedValue}>
-            {Math.round(
-              locationInfo.speedUnit === 'mph'
-                ? currentSpeed * KMH_TO_MPH
-                : currentSpeed
-            )}
-          </Text>
-          <Text style={styles.speedUnit}>
-            {locationInfo.speedUnit === 'mph' ? 'mph' : 'km/h'}
-          </Text>
+      {showSpeed && (
+        <View style={styles.speedCardContainer} testID="speed-card-container">
+          <View style={styles.infoCard}>
+            <Text style={styles.speedLabel}>SPEED</Text>
+            <Text style={styles.speedValue}>
+              {Math.round(
+                locationInfo.speedUnit === 'mph'
+                  ? currentSpeed * KMH_TO_MPH
+                  : currentSpeed
+              )}
+            </Text>
+            <Text style={styles.speedUnit}>
+              {locationInfo.speedUnit === 'mph' ? 'mph' : 'km/h'}
+            </Text>
+          </View>
         </View>
-        )}
-        
+      )}
+
+      <View style={styles.roadChipContainer} testID="road-chip-container">
         <View style={styles.roadCard} testID="current-road-chip">
           <Text style={styles.roadLabel}>ROAD</Text>
           <Text style={styles.roadText} numberOfLines={1}>
@@ -2502,17 +2504,16 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textAlign: 'center',
   },
-  topInfoContainer: {
+  speedCardContainer: {
     position: 'absolute',
     top: 60,
     left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
   },
-  roadOnlyContainer: {
-    justifyContent: 'flex-end',
+  roadChipContainer: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    maxWidth: 220,
   },
   infoCard: {
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
