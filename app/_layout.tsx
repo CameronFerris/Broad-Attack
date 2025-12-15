@@ -9,7 +9,7 @@ import { DriveTrackProvider } from "@/contexts/DriveTrackContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { TrackingPermissionProvider } from "@/contexts/TrackingPermissionContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Dimensions, Platform, StyleSheet, Text, View } from "react-native";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -100,7 +100,11 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const isUnsupportedTablet = Platform.OS === "ios" && Platform.isPad === true;
+  const screen = Dimensions.get("screen");
+  const shortestSide = Math.min(screen.width, screen.height);
+  const isProbablyIpad = Platform.OS === "ios" && shortestSide >= 768;
+  const isAndroid = Platform.OS === "android";
+  const isUnsupportedDevice = isProbablyIpad || isAndroid;
 
   useEffect(() => {
     const configureAudioMode = async () => {
@@ -122,12 +126,16 @@ export default function RootLayout() {
     configureAudioMode();
   }, []);
 
-  if (isUnsupportedTablet) {
-    console.log("Blocked unsupported iPad device");
+  if (isUnsupportedDevice) {
+    console.log("Blocked unsupported device", {
+      platform: Platform.OS,
+      shortestSide,
+      isProbablyIpad,
+    });
     return (
       <View style={styles.unsupportedContainer} testID="unsupported-device">
         <Text style={styles.unsupportedTitle}>DriveTrack is iPhone only</Text>
-        <Text style={styles.unsupportedCopy}>Open this app on an iPhone to continue.</Text>
+        <Text style={styles.unsupportedCopy}>This app is only supported on iPhone. For example, DriveTrack uses iPhone GPS in the background to detect your driving route and speed for the live map.</Text>
       </View>
     );
   }
