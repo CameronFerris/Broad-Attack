@@ -17,9 +17,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.drivetrack-speed-time-app-smjcx7xr",
       "infoPlist": {
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to use your location.",
-        "NSLocationAlwaysUsageDescription": "Allow $(PRODUCT_NAME) to use your location.",
-        "NSLocationWhenInUseUsageDescription": "Allow $(PRODUCT_NAME) to use your location.",
+       "NSLocationAlwaysAndWhenInUseUsageDescription": "B-Road Attack needs your location to track your driving routes, monitor your speed in real-time, display which road you're currently on, alert you to nearby speed cameras, and save your drive history. For example, the app will show 'Route 66' when you're driving on that road and track your average speed during the journey.",
+"NSLocationAlwaysUsageDescription": "B-Road Attack uses your location in the background to continuously track your driving sessions even when the app is not active, ensuring accurate route recording and uninterrupted speed monitoring. This allows you to review complete drive history and compete with friends in multiplayer mode.",
+"NSLocationWhenInUseUsageDescription": "B-Road Attack needs your location while using the app to track your driving routes, display your current road name, monitor your speed, and show nearby speed cameras on the map.",
         "UIBackgroundModes": [
           "location",
           "audio"
@@ -66,7 +66,7 @@
           "isAndroidForegroundServiceEnabled": true,
           "isAndroidBackgroundLocationEnabled": true,
           "isIosBackgroundLocationEnabled": true,
-          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+           "locationAlwaysAndWhenInUsePermission": "B-Road Attack needs your location to track your driving routes, monitor your speed in real-time, display which road you're currently on, alert you to nearby speed cameras, and save your drive history. For example, the app will show 'Route 66' when you're driving on that road and track your average speed during the journey."
         }
       ],
       [
